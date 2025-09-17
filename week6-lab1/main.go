@@ -124,7 +124,7 @@ func main() {
 	{
 		api.GET("/students", getStudents)
 		api.GET("/students/:id", getStudent)
-		api.POST("/students", createStudent) // เส้นทางที่ถูกต้อง
+		api.POST("/students", createStudent)
 		api.PUT("/students/:id", updateStudent)
 		api.DELETE("/students/:id", deleteStudent)
 	}
