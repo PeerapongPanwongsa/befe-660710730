@@ -123,44 +123,44 @@ func getBook(c *gin.Context) {
 // @Router      /books/new [get]
 func getNewBooks(c *gin.Context) {
 
-    rows, err := db.Query(`
+	rows, err := db.Query(`
         SELECT id, title, author, isbn, year, price, created_at, updated_at 
         FROM books 
         ORDER BY created_at DESC 
         LIMIT 5
     `)
 
-    if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-        return
-    }
-    defer rows.Close()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer rows.Close()
 
-    var books []Book
-    for rows.Next() {
-        var book Book
-        err := rows.Scan(
-            &book.ID, 
-            &book.Title, 
-            &book.Author, 
-            &book.ISBN, 
-            &book.Year, 
-            &book.Price, 
-            &book.Created_At, 
-            &book.Updated_At,
-        )
-        if err != nil {
-            c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-            return
-        }
-        books = append(books, book)
-    }
+	var books []Book
+	for rows.Next() {
+		var book Book
+		err := rows.Scan(
+			&book.ID,
+			&book.Title,
+			&book.Author,
+			&book.ISBN,
+			&book.Year,
+			&book.Price,
+			&book.Created_At,
+			&book.Updated_At,
+		)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		books = append(books, book)
+	}
 
-    if books == nil {
-        books = []Book{}
-    }
+	if books == nil {
+		books = []Book{}
+	}
 
-    c.JSON(http.StatusOK, books)
+	c.JSON(http.StatusOK, books)
 }
 
 // @Summary     Get all books
@@ -340,7 +340,7 @@ func main() {
 	api := r.Group("/api/v1")
 	{
 		api.GET("/books", getAllBooks)
-		api.GET("/books/new", getNewBooks) 
+		api.GET("/books/new", getNewBooks)
 		api.GET("/books/:id", getBook)
 		api.POST("/books", createBook)
 		api.PUT("/books/:id", updateBook)
