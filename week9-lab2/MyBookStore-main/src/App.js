@@ -23,7 +23,6 @@ function App() {
         {/* หน้า Login แยก ไม่ต้องมี Navbar/Footer */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/store-manager/add-book" element={<AddBookPage />}/>
-        <Route path="/store-manager/add-book" element={<AddBookPage />}/>
         {/* หน้าอื่นๆ ที่มี Navbar และ Footer */}
         <Route
           path="*"
