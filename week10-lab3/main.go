@@ -14,57 +14,21 @@ import (
 	_ "github.com/lib/pq"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
-	_ "github.com/swaggo/swag"
 )
 
 type ErrorResponse struct {
 	Message string `json:"message"`
 }
 
-var db *sql.DB
-
 type Book struct {
-	ID         int       `json:"id"`
-	Title      string    `json:"title"`
-	Author     string    `json:"author"`
-	ISBN       string    `json:"isbn"`
-	Year       int       `json:"year"`
-	Price      float64   `json:"price"`
-	Created_At time.Time `json:"created_at"`
-	Updated_At time.Time `json:"updated_at"`
-}
-
-func initDB() {
-	var err error
-	host := getEnv("DB_HOST", "")
-	name := getEnv("DB_NAME", "")
-	user := getEnv("DB_USER", "")
-	password := getEnv("DB_PASSWORD", "")
-	port := getEnv("DB_PORT", "")
-
-	conSt := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, name)
-
-	db, err = sql.Open("postgres", conSt)
-	if err != nil {
-		log.Fatal("Failed to open database.")
-	}
-
-	//กำหนดจำนวน Connection สูงสุด
-	db.SetMaxOpenConns(25)
-
-	// กำหนดจำนวน Idle connection สูงสุด
-	db.SetMaxIdleConns(20)
-
-	// กำหนดอายุของ Connection
-	db.SetConnMaxLifetime(5 * time.Minute)
-
-	err = db.Ping()
-	if err != nil {
-		log.Fatal("Failed to Ping.", err)
-
-	}
-
-	log.Println("Successfully~~~")
+	ID        int       `json:"id"`
+	Title     string    `json:"title"`
+	Author    string    `json:"author"`
+	ISBN      string    `json:"isbn"`
+	Year      int       `json:"year"`
+	Price     float64   `json:"price"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 func getEnv(key, defaultValue string) string {
@@ -72,6 +36,30 @@ func getEnv(key, defaultValue string) string {
 		return value
 	}
 	return defaultValue
+}
+
+var db *sql.DB
+
+func initDB() {
+	var err error
+
+	host := getEnv("DB_HOST", "")
+	name := getEnv("DB_NAME", "")
+	user := getEnv("DB_USER", "")
+	password := getEnv("DB_PASSWORD", "")
+	port := getEnv("DB_PORT", "")
+
+	conSt := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, name)
+	//fmt.Println(conSt)
+	db, err = sql.Open("postgres", conSt)
+	if err != nil {
+		log.Fatal("failed to open database")
+	}
+	err = db.Ping()
+	if err != nil {
+		log.Fatal("failed to connect to database")
+	}
+	log.Println("successfully connect to database")
 }
 
 func getHealth(c *gin.Context) {
@@ -83,33 +71,44 @@ func getHealth(c *gin.Context) {
 	c.JSON(200, gin.H{"message": "healthy"})
 }
 
-// @Summary     Get book by ID
-// @Description Get details of specific book
-// @Tags        Books
-// @Accept      json
-// @Produce     json
-// @Param       id   path      int  true  "Book ID"
-// @Success     200  {object}  Book
-// @Failure     404  {object}  ErrorResponse
-// @Failure     500  {object}  ErrorResponse
-// @Router      /books/{id} [get]
-func getBook(c *gin.Context) {
-	id := c.Param("id")
-	var book Book
+// @Summary Get all book
+// @Description Get details of a books
+// @Tags Books
+// @Produce  json
+// @Success 200  {array}  Book
+// @Failure 500  {object}  ErrorResponse
+// @Router  /books [get]
+func getAllBooks(c *gin.Context) {
+	yearInput := c.Query("year")
+	var rows *sql.Rows
+	var err error
+	// ลูกค้าถาม "มีหนังสืออะไรบ้าง"
 
-	// QueryRow ใช้เมื่อคาดว่าจะได้ผลลัพธ์ 0 หรือ 1 แถว
-	err := db.QueryRow("SELECT id, title, author FROM books WHERE id = $1", id).
-		Scan(&book.ID, &book.Title, &book.Author)
-
-	if err == sql.ErrNoRows {
-		c.JSON(http.StatusNotFound, gin.H{"error": "book not found"})
-		return
-	} else if err != nil {
+	if yearInput != "" {
+		rows, err = db.Query("SELECT id, title, author, isbn, year, price, created_at, updated_at FROM books WHERE year = $1", yearInput)
+	} else {
+		rows, err = db.Query("SELECT id, title, author, isbn, year, price, created_at, updated_at FROM books")
+	}
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	defer rows.Close() // ต้องปิด rows เสมอ เพื่อคืน Connection กลับ pool
 
-	c.JSON(http.StatusOK, book)
+	var books []Book
+	for rows.Next() {
+		var book Book
+		err := rows.Scan(&book.ID, &book.Title, &book.Author, &book.ISBN, &book.Year, &book.Price, &book.CreatedAt, &book.UpdatedAt)
+		if err != nil {
+			// handle error
+		}
+		books = append(books, book)
+	}
+	if books == nil {
+		books = []Book{}
+	}
+
+	c.JSON(http.StatusOK, books)
 }
 
 // @Summary     Get new books
@@ -123,94 +122,78 @@ func getBook(c *gin.Context) {
 // @Router      /books/new [get]
 func getNewBooks(c *gin.Context) {
 
-	rows, err := db.Query(`
+    rows, err := db.Query(`
         SELECT id, title, author, isbn, year, price, created_at, updated_at 
         FROM books 
         ORDER BY created_at DESC 
         LIMIT 5
     `)
 
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	defer rows.Close()
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        return
+    }
+    defer rows.Close()
 
-	var books []Book
-	for rows.Next() {
-		var book Book
-		err := rows.Scan(
-			&book.ID,
-			&book.Title,
-			&book.Author,
-			&book.ISBN,
-			&book.Year,
-			&book.Price,
-			&book.Created_At,
-			&book.Updated_At,
-		)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		books = append(books, book)
-	}
+    var books []Book
+    for rows.Next() {
+        var book Book
+        err := rows.Scan(
+            &book.ID, 
+            &book.Title, 
+            &book.Author, 
+            &book.ISBN, 
+            &book.Year, 
+            &book.Price, 
+            &book.CreatedAt, 
+            &book.UpdatedAt,
+        )
+        if err != nil {
+            c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+            return
+        }
+        books = append(books, book)
+    }
 
-	if books == nil {
-		books = []Book{}
-	}
+    if books == nil {
+        books = []Book{}
+    }
 
-	c.JSON(http.StatusOK, books)
+    c.JSON(http.StatusOK, books)
 }
 
-// @Summary     Get all books
-// @Description Get all books or filter by year
-// @Description Get details of specific book
-// @Tags        Books
-// @Accept      json
-// @Produce     json
-// @Success     200  {array}  Book
-// @Failure     404  {object}  ErrorResponse
-// @Failure     500  {object}  ErrorResponse
-// @Router      /books [get]
-func getAllBooks(c *gin.Context) {
-	var rows *sql.Rows
-	var err error
-	YearQ := c.Query("year")
-	if YearQ == "" {
-		rows, err = db.Query("SELECT id, title, author, isbn, year, price, created_at, updated_at FROM books")
-	} else {
-		rows, err = db.Query("SELECT id, title, author, isbn, year, price, created_at, updated_at FROM books WHERE year = $1", YearQ)
-	}
-	// ลูกค้าถาม "มีหนังสืออะไรบ้าง"
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	defer rows.Close() // ต้องปิด rows เสมอ เพื่อคืน Connection กลับ pool
-
-	var books []Book
-
-	for rows.Next() {
-		var book Book
-		err := rows.Scan(&book.ID, &book.Title, &book.Author, &book.ISBN, &book.Year, &book.Price, &book.Created_At, &book.Updated_At)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
-		}
-		books = append(books, book)
-	}
-	if books == nil {
-		books = []Book{}
-	}
-	c.JSON(http.StatusOK, books)
-
-}
-
-// @Summary Create a new book
-// @Description Create a new book
+// @Summary Get book by ID
+// @Description Get details of a book by ID
 // @Tags Books
 // @Produce  json
+// @Param   id   path      int     true  "book ID"
+// @Success 200  {object}  Book
+// @Failure 500  {object}  ErrorResponse
+// @Router  /books/{id} [get]
+func getBook(c *gin.Context) {
+	id := c.Param("id")
+	var book Book
+
+	// QueryRow ใช้เมื่อคาดว่าจะได้ผลลัพธ์ 0 หรือ 1 แถว
+	err := db.QueryRow("SELECT id, title, author, isbn, year, price FROM books WHERE id = $1", id).
+		Scan(&book.ID, &book.Title, &book.Author, &book.ISBN, &book.Year, &book.Price)
+
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusNotFound, gin.H{"error": "book not found"})
+		return
+	} else if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, book)
+}
+
+// @Summary create book
+// @Description create details of a book
+// @Tags Books
+// @Produce  json
+// @Param   book  body  Book  true  "book data"
 // @Success 200  {object}  Book
 // @Failure 500  {object}  ErrorResponse
 // @Router  /books [post]
@@ -224,14 +207,14 @@ func createBook(c *gin.Context) {
 
 	// ใช้ RETURNING เพื่อดึงค่าที่ database generate (id, timestamps)
 	var id int
-	var created_At, updated_At time.Time
+	var createdAt, updatedAt time.Time
 
 	err := db.QueryRow(
 		`INSERT INTO books (title, author, isbn, year, price)
          VALUES ($1, $2, $3, $4, $5)
          RETURNING id, created_at, updated_at`,
 		newBook.Title, newBook.Author, newBook.ISBN, newBook.Year, newBook.Price,
-	).Scan(&id, &created_At, &updated_At)
+	).Scan(&id, &createdAt, &updatedAt)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -239,28 +222,26 @@ func createBook(c *gin.Context) {
 	}
 
 	newBook.ID = id
-	newBook.Created_At = created_At
-	newBook.Updated_At = updated_At
+	newBook.CreatedAt = createdAt
+	newBook.UpdatedAt = updatedAt
 
 	c.JSON(http.StatusCreated, newBook) // ใช้ 201 Created
 }
 
-// @Summary     Update a book
-// @Description Update book details by ID
-// @Tags        Books
-// @Accept      json
-// @Produce     json
-// @Param       id    path      int   true  "Book ID"
-// @Param       book  body      Book  true  "Book object"
-// @Success     200  {object}   Book
-// @Failure     400  {object}   ErrorResponse
-// @Failure     404  {object}   ErrorResponse
-// @Failure     500  {object}   ErrorResponse
-// @Router      /books/{id} [put]
+// @Summary update book by ID
+// @Description update details of a book by ID
+// @Tags Books
+// @Produce  json
+// @Param   id    path   int   true  "book ID"
+// @Param   book  body  Book  true  "update book data"
+// @Success 200  {object}  Book
+// @Failure 500  {object}  ErrorResponse
+// @Router  /books/{id} [put]
 func updateBook(c *gin.Context) {
+	var ID int
 	id := c.Param("id")
 	var updateBook Book
-	var ID int
+
 	if err := c.ShouldBindJSON(&updateBook); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -284,37 +265,35 @@ func updateBook(c *gin.Context) {
 		return
 	}
 	updateBook.ID = ID
-	updateBook.Updated_At = updatedAt
+	updateBook.UpdatedAt = updatedAt
 	c.JSON(http.StatusOK, updateBook)
 }
 
-// @Summary     Delete a book
-// @Description Delete book by ID
-// @Tags        Books
-// @Accept      json
-// @Produce     json
-// @Param       id   path      int     true  "Book ID"
-// @Success     200  {object}  map[string]interface{}
-// @Failure     404  {object}  ErrorResponse
-// @Failure     500  {object}  ErrorResponse
-// @Router      /books/{id} [delete]
+// @Summary delete book by ID
+// @Description delete details of a book by ID
+// @Tags Books
+// @Produce  json
+// @Param   id   path      int     true  "book ID"
+// @Success 200  {object}  Book
+// @Failure 500  {object}  ErrorResponse
+// @Router  /books/{id} [delete]
 func deleteBook(c *gin.Context) {
 	id := c.Param("id")
 
 	result, err := db.Exec("DELETE FROM books WHERE id = $1", id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error message": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error message": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	if rowsAffected == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Book not found!!!"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "book not found"})
 		return
 	}
 
@@ -328,19 +307,21 @@ func deleteBook(c *gin.Context) {
 // @BasePath        /api/v1
 func main() {
 	initDB()
-	defer db.Close() //Clear resource, when you finish.
-
+	defer db.Close()
 	r := gin.Default()
-	r.GET("/health", getHealth)
 	config := cors.DefaultConfig()
 	config.AllowAllOrigins = true
 	r.Use(cors.New(config))
+
+	// Swagger endpoint
 	r.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	r.GET("/health", getHealth)
 
 	api := r.Group("/api/v1")
 	{
 		api.GET("/books", getAllBooks)
-		api.GET("/books/new", getNewBooks)
+		api.GET("/books/new", getNewBooks) 
 		api.GET("/books/:id", getBook)
 		api.POST("/books", createBook)
 		api.PUT("/books/:id", updateBook)

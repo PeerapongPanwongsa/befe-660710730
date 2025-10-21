@@ -17,17 +17,14 @@ const docTemplate = `{
     "paths": {
         "/books": {
             "get": {
-                "description": "Get all books or filter by year\nGet details of specific book",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Get details of a books",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Books"
                 ],
-                "summary": "Get all books",
+                "summary": "Get all book",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -36,12 +33,6 @@ const docTemplate = `{
                             "items": {
                                 "$ref": "#/definitions/main.Book"
                             }
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/main.ErrorResponse"
                         }
                     },
                     "500": {
@@ -53,14 +44,25 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Create a new book",
+                "description": "create details of a book",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Books"
                 ],
-                "summary": "Create a new book",
+                "summary": "create book",
+                "parameters": [
+                    {
+                        "description": "book data",
+                        "name": "book",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.Book"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -77,35 +79,105 @@ const docTemplate = `{
                 }
             }
         },
-        "/books/new": {
+        "/books/{id}": {
             "get": {
-                "description": "Get latest books ordered by created date",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Get details of a book by ID",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Books"
                 ],
-                "summary": "Get new books",
+                "summary": "Get book by ID",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "Number of books to return (default 5)",
-                        "name": "limit",
-                        "in": "query"
+                        "description": "book ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/main.Book"
-                            }
+                            "$ref": "#/definitions/main.Book"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "update details of a book by ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Books"
+                ],
+                "summary": "update book by ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "book ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "update book data",
+                        "name": "book",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/main.Book"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.Book"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "delete details of a book by ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Books"
+                ],
+                "summary": "delete book by ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "book ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.Book"
                         }
                     },
                     "500": {

@@ -33,11 +33,7 @@ info:
 paths:
   /books:
     get:
-      consumes:
-      - application/json
-      description: |-
-        Get all books or filter by year
-        Get details of specific book
+      description: Get details of a books
       produces:
       - application/json
       responses:
@@ -47,19 +43,22 @@ paths:
             items:
               $ref: '#/definitions/main.Book'
             type: array
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/main.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/main.ErrorResponse'
-      summary: Get all books
+      summary: Get all book
       tags:
       - Books
     post:
-      description: Create a new book
+      description: create details of a book
+      parameters:
+      - description: book data
+        in: body
+        name: book
+        required: true
+        schema:
+          $ref: '#/definitions/main.Book'
       produces:
       - application/json
       responses:
@@ -71,18 +70,17 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/main.ErrorResponse'
-      summary: Create a new book
+      summary: create book
       tags:
       - Books
-  /books/new:
-    get:
-      consumes:
-      - application/json
-      description: Get latest books ordered by created date
+  /books/{id}:
+    delete:
+      description: delete details of a book by ID
       parameters:
-      - description: Number of books to return (default 5)
-        in: query
-        name: limit
+      - description: book ID
+        in: path
+        name: id
+        required: true
         type: integer
       produces:
       - application/json
@@ -90,14 +88,62 @@ paths:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/main.Book'
-            type: array
+            $ref: '#/definitions/main.Book'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/main.ErrorResponse'
-      summary: Get new books
+      summary: delete book by ID
+      tags:
+      - Books
+    get:
+      description: Get details of a book by ID
+      parameters:
+      - description: book ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.Book'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Get book by ID
+      tags:
+      - Books
+    put:
+      description: update details of a book by ID
+      parameters:
+      - description: book ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: update book data
+        in: body
+        name: book
+        required: true
+        schema:
+          $ref: '#/definitions/main.Book'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.Book'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: update book by ID
       tags:
       - Books
 swagger: "2.0"
