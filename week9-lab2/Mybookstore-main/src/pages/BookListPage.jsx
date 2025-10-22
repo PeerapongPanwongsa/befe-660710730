@@ -25,7 +25,7 @@ const BookListPage = () => {
           setLoading(true);
           
           // เรียก API เพื่อดึงข้อมูลหนังสือ
-          const response = await fetch('http://localhost/api/v1/books');
+          const response = await fetch('http://localhost:8080/api/v1/books');
   
           if (!response.ok) {
             throw new Error('Failed to fetch books');

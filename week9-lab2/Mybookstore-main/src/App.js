@@ -15,6 +15,8 @@ import CategoryPage from './pages/CategoryPage';
 import ContactPage from './pages/ContactPage';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
+// 💥 Import Component ใหม่สำหรับ Store Manager
+import StoreManagerAllBooksPage from './pages/StoreManagerAllBooksPage'; 
 
 function App() {
   return (
@@ -22,8 +24,11 @@ function App() {
       <Routes>
         {/* หน้า Login แยก ไม่ต้องมี Navbar/Footer */}
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/store-manager/all-books" element={<AllBooksPage />} />
+        
+        {/* <Route path="/store-manager/all-books" element={<StoreManagerAllBooksPage />} />
         <Route path="/store-manager/add-book" element={<AddBookPage />}/>
+        <Route path="/store-manager/edit-book/:id" element={<AddBookPage />} />  */}
+
         {/* หน้าอื่นๆ ที่มี Navbar และ Footer */}
         <Route
           path="*"
@@ -33,12 +38,19 @@ function App() {
               <main className="flex-grow bg-gray-50">
                 <Routes>
                   <Route path="/" element={<HomePage />} />
-                  <Route path="/books" element={<BookListPage />} />
+                  {/* แนะนำให้ใช้ AllBooksPage ใน /books แทน BookListPage */}
+                  <Route path="/books" element={<AllBooksPage />} /> 
                   <Route path="/books/:id" element={<BookDetailPage />} />
                   <Route path="/categories" element={<CategoryPage />} />
                   <Route path="/categories/:category" element={<CategoryPage />} />
                   <Route path="/about" element={<AboutPage />} />
                   <Route path="/contact" element={<ContactPage />} />
+
+                  <Route path="/store-manager/all-books" element={<StoreManagerAllBooksPage />} />
+                  
+                  <Route path="/store-manager/add-book" element={<AddBookPage />}/>
+                  <Route path="/store-manager/edit-book/:id" element={<AddBookPage />} />
+
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </main>

@@ -1,9 +1,18 @@
 import { BookOpenIcon, LogoutIcon } from '@heroicons/react/outline';
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+// 💥 เพิ่ม useParams เพื่อดึง ID เมื่ออยู่ในโหมดแก้ไข
+import { useNavigate, useParams } from 'react-router-dom';
+
+const API_BASE_URL = 'http://localhost:8080/api/v1/books';
 
 const AddBookPage = () => {
+  // 💥 ดึง id จาก URL (จะมีค่าเมื่ออยู่ในโหมดแก้ไข)
+  const { id } = useParams();
   const navigate = useNavigate();
+  
+  // 💥 ตรวจสอบโหมดปัจจุบัน
+  const isEditMode = !!id; 
+
   const [formData, setFormData] = useState({
     title: '',
     author: '',
@@ -13,15 +22,53 @@ const AddBookPage = () => {
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
+  const [loadingBook, setLoadingBook] = useState(isEditMode); // ถ้า Edit ให้เริ่มที่ Loading
+  const [submitMessage, setSubmitMessage] = useState('');
+  const [errorLoading, setErrorLoading] = useState(null);
 
+  // ----------------------------------------------------------------
+  // 💥 [EFFECT] ดึงข้อมูลหนังสือเมื่ออยู่ในโหมดแก้ไข
+  // ----------------------------------------------------------------
   useEffect(() => {
     // Check authentication
     const isAuthenticated = localStorage.getItem('isAdminAuthenticated');
     if (!isAuthenticated) {
       navigate('/login');
     }
-  }, [navigate]);
+
+    if (isEditMode) {
+      const fetchBookData = async () => {
+        try {
+          setLoadingBook(true);
+          const response = await fetch(`${API_BASE_URL}/${id}`);
+          
+          if (!response.ok) {
+            throw new Error('Failed to fetch book data for editing');
+          }
+          
+          const data = await response.json();
+          
+          // กำหนดค่าเริ่มต้นของฟอร์มด้วยข้อมูลที่ดึงมา
+          setFormData({
+            title: data.title || '',
+            author: data.author || '',
+            isbn: data.isbn || '',
+            // แปลงตัวเลขกลับเป็น string สำหรับ field input type="number"
+            year: data.year ? String(data.year) : '', 
+            price: data.price ? String(data.price) : ''
+          });
+          setErrorLoading(null);
+
+        } catch (err) {
+          setErrorLoading(err.message);
+          console.error('Error fetching book for edit:', err);
+        } finally {
+          setLoadingBook(false);
+        }
+      };
+      fetchBookData();
+    }
+  }, [navigate, id, isEditMode]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -29,7 +76,6 @@ const AddBookPage = () => {
       ...prev,
       [name]: value
     }));
-    // Clear error for this field when user starts typing
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -39,6 +85,7 @@ const AddBookPage = () => {
   };
 
   const validateForm = () => {
+    // ... (Logic Validation เดิม) ...
     const newErrors = {};
 
     // Title validation
@@ -93,23 +140,31 @@ const AddBookPage = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  // ----------------------------------------------------------------
+  // 💥 [FUNCTION] Logic Submit: POST (Add) หรือ PUT (Edit)
+  // ----------------------------------------------------------------
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setSuccessMessage('');
+    setSubmitMessage('');
 
     if (!validateForm()) {
       return;
     }
 
     setIsSubmitting(true);
+    
+    // 💥 กำหนด Method และ URL ตามโหมด
+    const method = isEditMode ? 'PUT' : 'POST';
+    const url = isEditMode ? `${API_BASE_URL}/${id}` : API_BASE_URL;
 
     try {
-      const response = await fetch('/api/v1/books/', {
-        method: 'POST',
+      const response = await fetch(url, {
+        method: method,
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          // ส่งข้อมูลที่ถูกแปลงประเภทข้อมูลแล้ว
           title: formData.title.trim(),
           author: formData.author.trim(),
           isbn: formData.isbn.trim(),
@@ -119,27 +174,21 @@ const AddBookPage = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to add book');
+        // พยายามอ่าน error message จาก backend
+        const errorData = await response.json().catch(() => ({ message: response.statusText }));
+        throw new Error(errorData.message || 'Failed to process book');
       }
 
-      const data = await response.json();
-      setSuccessMessage(`เพิ่มหนังสือ "${data.title}" สำเร็จ!`);
+      const action = isEditMode ? 'แก้ไข' : 'เพิ่ม';
+      setSubmitMessage(`ดำเนินการ ${action} หนังสือ "${formData.title}" สำเร็จ!`);
 
-      // Reset form
-      setFormData({
-        title: '',
-        author: '',
-        isbn: '',
-        year: '',
-        price: ''
-      });
-      // Redirect ไปหน้า homepage
-      navigate('/');
+      // 💥 หลังทำสำเร็จ: Redirect ไปหน้า All Books ของ Store Manager
+      setTimeout(() => {
+        navigate('/store-manager/all-books');
+      }, 1500);
 
-      // Clear success message after 5 seconds
-      setTimeout(() => setSuccessMessage(''), 5000);
     } catch (error) {
-      setErrors({ submit: 'เกิดข้อผิดพลาดในการเพิ่มหนังสือ: ' + error.message });
+      setErrors({ submit: `เกิดข้อผิดพลาดในการ ${isEditMode ? 'แก้ไข' : 'เพิ่ม'} หนังสือ: ` + error.message });
     } finally {
       setIsSubmitting(false);
     }
@@ -149,15 +198,40 @@ const AddBookPage = () => {
     localStorage.removeItem('isAdminAuthenticated');
     navigate('/login');
   };
+  
+  // ----------------------------------------------------------------
+  // 💥 [RENDER] Loading และ Error ในโหมด Edit
+  // ----------------------------------------------------------------
+  if (loadingBook) {
+      return (
+        <div className="flex justify-center items-center min-h-screen">
+          <div className="text-xl">Loading book data...</div>
+        </div>
+      );
+  }
 
+  if (errorLoading) {
+      return (
+          <div className="flex flex-col justify-center items-center min-h-screen">
+              <div className="text-xl text-red-600 mb-4">Error loading book: {errorLoading}</div>
+              <button onClick={() => navigate('/store-manager/all-books')} className="text-blue-600 hover:underline">
+                  Go back to Manager List
+              </button>
+          </div>
+      );
+  }
+
+  // ----------------------------------------------------------------
+  // 💥 [RENDER] JSX หลัก
+  // ----------------------------------------------------------------
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-gradient-to-r from-viridian-600 to-green-700 text-black shadow-lg">
+      {/* Header (เหมือนเดิม) */}
+      <header className="bg-gradient-to-r from-viridian-600 to-green-700 text-white shadow-lg">
         <div className="container mx-auto px-4 py-6">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-3">
-              <BookOpenIcon className="h-8 w-8" />
+              <BookOpenIcon className="h-8 w-8 text-white" />
               <h1 className="text-2xl font-bold">BookStore - BackOffice</h1>
             </div>
             <button
@@ -176,11 +250,14 @@ const AddBookPage = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
           <div className="bg-white rounded-xl shadow-lg p-8">
-            <h2 className="text-3xl font-bold text-gray-900 mb-6">เพิ่มหนังสือใหม่</h2>
+            <h2 className="text-3xl font-bold text-gray-900 mb-6">
+              {/* 💥 เปลี่ยน Title ตามโหมด */}
+              {isEditMode ? `แก้ไขหนังสือ ID: ${id}` : 'เพิ่มหนังสือใหม่'}
+            </h2>
 
-            {successMessage && (
+            {submitMessage && (
               <div className="mb-6 bg-green-50 border border-green-400 text-green-700 px-4 py-3 rounded-lg">
-                {successMessage}
+                {submitMessage}
               </div>
             )}
 
@@ -191,6 +268,8 @@ const AddBookPage = () => {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* ... (Form Fields เดิม) ... */}
+              
               {/* Title */}
               <div>
                 <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
@@ -310,17 +389,21 @@ const AddBookPage = () => {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className={`flex-1 py-3 px-6 border-2 border-gray-300 rounded-lg font-semibold text-gray-700
+                  className={`flex-1 py-3 px-6 rounded-lg font-semibold text-white
                     transition-colors duration-200
                     ${isSubmitting
                       ? 'bg-gray-400 cursor-not-allowed'
                       : 'bg-viridian-600 hover:bg-viridian-700'}`}
                 >
-                  {isSubmitting ? 'กำลังบันทึก...' : 'เพิ่มหนังสือ'}
+                  {isSubmitting 
+                    ? `กำลังบันทึก...` 
+                    : isEditMode 
+                      ? 'บันทึกการแก้ไข' 
+                      : 'เพิ่มหนังสือ'}
                 </button>
                 <button
                   type="button"
-                  onClick={() => navigate('/')}
+                  onClick={() => navigate('/store-manager/all-books')}
                   className="px-6 py-3 border-2 border-gray-300 rounded-lg font-semibold
                     text-gray-700 hover:bg-gray-50 transition-colors"
                 >
@@ -335,4 +418,4 @@ const AddBookPage = () => {
   );
 };
 
-export default AddBookPage;
+export default AddBookPage; // ยังคงใช้ชื่อเดิมตามไฟล์ของคุณ

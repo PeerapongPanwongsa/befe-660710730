@@ -1,13 +1,23 @@
 import { MenuIcon, SearchIcon, ShoppingCartIcon, UserIcon, XIcon } from '@heroicons/react/outline';
 import { useState } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [cartCount] = useState(3);
+  const navigate = useNavigate();
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
+  };
+
+  // 💥 เพิ่มฟังก์ชัน Logout
+  const handleLogout = () => {
+    // 1. ลบ token/session ออกจาก localStorage/Cookie
+    // localStorage.removeItem('authToken'); 
+
+    // 2. นำทางไปยังหน้า Login
+    navigate('/login');
   };
 
   return (
@@ -26,55 +36,68 @@ const Navbar = () => {
 
           {/* Desktop Menu */}
           <div className="hidden lg:flex items-center space-x-8">
-            <NavLink 
-              to="/" 
-              className={({ isActive }) => 
-                `text-gray-700 hover:text-viridian-600 transition-colors font-medium ${
-                  isActive ? 'text-viridian-600 border-b-2 border-viridian-600' : ''
+            <NavLink
+              to="/"
+              className={({ isActive }) =>
+                `text-gray-700 hover:text-viridian-600 transition-colors font-medium ${isActive ? 'text-viridian-600 border-b-2 border-viridian-600' : ''
                 }`
               }
             >
               หน้าแรก
             </NavLink>
-            <NavLink 
-              to="/books" 
-              className={({ isActive }) => 
-                `text-gray-700 hover:text-viridian-600 transition-colors font-medium ${
-                  isActive ? 'text-viridian-600 border-b-2 border-viridian-600' : ''
+            <NavLink
+              to="/books"
+              className={({ isActive }) =>
+                `text-gray-700 hover:text-viridian-600 transition-colors font-medium ${isActive ? 'text-viridian-600 border-b-2 border-viridian-600' : ''
                 }`
               }
             >
               หนังสือ
             </NavLink>
-            <NavLink 
-              to="/categories" 
-              className={({ isActive }) => 
-                `text-gray-700 hover:text-viridian-600 transition-colors font-medium ${
-                  isActive ? 'text-viridian-600 border-b-2 border-viridian-600' : ''
+            <NavLink
+              to="/categories"
+              className={({ isActive }) =>
+                `text-gray-700 hover:text-viridian-600 transition-colors font-medium ${isActive ? 'text-viridian-600 border-b-2 border-viridian-600' : ''
                 }`
               }
             >
               หมวดหมู่
             </NavLink>
-            <NavLink 
-              to="/about" 
-              className={({ isActive }) => 
-                `text-gray-700 hover:text-viridian-600 transition-colors font-medium ${
-                  isActive ? 'text-viridian-600 border-b-2 border-viridian-600' : ''
+            <NavLink
+              to="/about"
+              className={({ isActive }) =>
+                `text-gray-700 hover:text-viridian-600 transition-colors font-medium ${isActive ? 'text-viridian-600 border-b-2 border-viridian-600' : ''
                 }`
               }
             >
               เกี่ยวกับเรา
             </NavLink>
-            <NavLink 
-              to="/contact" 
-              className={({ isActive }) => 
-                `text-gray-700 hover:text-viridian-600 transition-colors font-medium ${
-                  isActive ? 'text-viridian-600 border-b-2 border-viridian-600' : ''
+            <NavLink
+              to="/contact"
+              className={({ isActive }) =>
+                `text-gray-700 hover:text-viridian-600 transition-colors font-medium ${isActive ? 'text-viridian-600 border-b-2 border-viridian-600' : ''
                 }`
               }
             >
               ติดต่อ
+            </NavLink>
+            <NavLink
+              to="/store-manager/all-books"
+              className={({ isActive }) =>
+                `text-gray-700 hover:text-viridian-600 transition-colors font-medium ${isActive ? 'text-viridian-600 border-b-2 border-viridian-600' : ''
+                }`
+              }
+            >
+              ตารางหนังสือทั้่งหมด
+            </NavLink>
+            <NavLink
+              to="/store-manager/add-book"
+              className={({ isActive }) =>
+                `text-gray-700 hover:text-viridian-600 transition-colors font-medium ${isActive ? 'text-viridian-600 border-b-2 border-viridian-600' : ''
+                }`
+              }
+            >
+              เพิ่มหนังสือ
             </NavLink>
           </div>
 
@@ -83,7 +106,7 @@ const Navbar = () => {
             <button className="p-2 text-gray-600 hover:text-viridian-600 transition-colors">
               <SearchIcon className="h-6 w-6" />
             </button>
-            
+
             <button className="relative p-2 text-gray-600 hover:text-viridian-600 transition-colors">
               <ShoppingCartIcon className="h-6 w-6" />
               {cartCount > 0 && (
@@ -93,13 +116,20 @@ const Navbar = () => {
                 </span>
               )}
             </button>
-            
+
+            <button
+    onClick={handleLogout}
+    className="p-2 text-red-600 hover:text-red-700 transition-colors" 
+>
+    ออกจากระบบ
+</button>
+
             <button className="p-2 text-gray-600 hover:text-viridian-600 transition-colors">
               <UserIcon className="h-6 w-6" />
             </button>
 
             {/* Mobile Menu Toggle */}
-            <button 
+            <button
               className="lg:hidden p-2 text-gray-600 hover:text-viridian-600 transition-colors"
               onClick={toggleMenu}
             >
@@ -113,44 +143,57 @@ const Navbar = () => {
         </div>
 
         {/* Mobile Menu */}
-        <div className={`lg:hidden transition-all duration-300 ease-in-out ${
-          isMenuOpen ? 'max-h-64 opacity-100' : 'max-h-0 opacity-0 overflow-hidden'
-        }`}>
+        <div className={`lg:hidden transition-all duration-300 ease-in-out ${isMenuOpen ? 'max-h-64 opacity-100' : 'max-h-0 opacity-0 overflow-hidden'
+          }`}>
           <div className="py-4 border-t">
-            <NavLink 
-              to="/" 
+            <NavLink
+              to="/"
               className="block py-2 text-gray-700 hover:text-viridian-600 transition-colors"
               onClick={() => setIsMenuOpen(false)}
             >
               หน้าแรก
             </NavLink>
-            <NavLink 
-              to="/books" 
+            <NavLink
+              to="/books"
               className="block py-2 text-gray-700 hover:text-viridian-600 transition-colors"
               onClick={() => setIsMenuOpen(false)}
             >
               หนังสือ
             </NavLink>
-            <NavLink 
-              to="/categories" 
+            <NavLink
+              to="/categories"
               className="block py-2 text-gray-700 hover:text-viridian-600 transition-colors"
               onClick={() => setIsMenuOpen(false)}
             >
               หมวดหมู่
             </NavLink>
-            <NavLink 
-              to="/about" 
+            <NavLink
+              to="/about"
               className="block py-2 text-gray-700 hover:text-viridian-600 transition-colors"
               onClick={() => setIsMenuOpen(false)}
             >
               เกี่ยวกับเรา
             </NavLink>
-            <NavLink 
-              to="/contact" 
+            <NavLink
+              to="/contact"
               className="block py-2 text-gray-700 hover:text-viridian-600 transition-colors"
               onClick={() => setIsMenuOpen(false)}
             >
               ติดต่อ
+            </NavLink>
+            <NavLink
+              to="/store-manager/all-books"
+              className="block py-2 text-gray-700 hover:text-viridian-600 transition-colors"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              ตารางหนังสือทั้่งหมด
+            </NavLink>
+            <NavLink
+              to="/store-manager/add-book"
+              className="block py-2 text-gray-700 hover:text-viridian-600 transition-colors"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              เพิ่มหนังสือ
             </NavLink>
           </div>
         </div>

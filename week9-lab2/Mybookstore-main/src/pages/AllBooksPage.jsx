@@ -1,10 +1,10 @@
-import { PencilIcon, TrashIcon } from '@heroicons/react/outline';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BookCard from '../components/BookCard';
 import LoadingSpinner from '../components/LoadingSpinner';
 import SearchBar from '../components/SearchBar';
 
+// **** แก้ไข: ลบ import { PencilIcon, TrashIcon } ออก ****
 
 const AllBooksPage = () => {
     const [books, setBooks] = useState([]);
@@ -20,27 +20,26 @@ const AllBooksPage = () => {
         'psychology', 'business', 'technology', 'cooking'
     ];
     const [error, setError] = useState(null);
+    
+    // ตั้งค่า URL ของ Backend
+    const API_BASE_URL = 'http://localhost:8080/api/v1/books'; 
+
     useEffect(() => {
         const fetchBooks = async () => {
             try {
                 setLoading(true);
 
                 // เรียก API เพื่อดึงข้อมูลหนังสือ
-                const response = await fetch('http://localhost/api/v1/books');
+                const response = await fetch(API_BASE_URL);
 
                 if (!response.ok) {
                     throw new Error('Failed to fetch books');
                 }
-                // ถ้าไม่สำเร็จจะโยน Error
-
                 const data = await response.json();
 
-                // สุ่มหนังสือ 3 เล่ม
                 setBooks(data);         // เก็บข้อมูลทั้งหมดไว้ใน state books
                 setFilteredBooks(data);
-
-                // setFeaturedBooks(selected);
-                // setError(null);
+                setError(null);
 
             } catch (err) {
                 setError(err.message);
@@ -51,16 +50,12 @@ const AllBooksPage = () => {
             }
         };
 
-
-        // เรียกใช้ฟังก์ชันดึงข้อมูล
         fetchBooks();
     }, []);
 
+    // **** ลบ: handleNavigateAddBook, handleEdit, handleDelete ออก เพราะเป็นหน้าลูกค้า ****
     const navigate = useNavigate();
 
-    const handleNavigateAddBook = () => {
-        navigate('/store-manager/add-book');
-    };
     const handleSearch = (searchTerm) => {
         const filtered = books.filter(book =>
             book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -94,11 +89,13 @@ const AllBooksPage = () => {
                 sorted.sort((a, b) => b.price - a.price);
                 break;
             case 'popular':
-                sorted.sort((a, b) => b.reviews - a.reviews);
+                // ตรวจสอบว่ามี reviews หรือไม่ก่อนเปรียบเทียบ
+                sorted.sort((a, b) => (b.reviews || 0) - (a.reviews || 0));
                 break;
             case 'newest':
             default:
-                sorted.sort((a, b) => b.id - a.id);
+                // จัดเรียงตาม ID เพื่อให้เหมือนใหม่ล่าสุด
+                sorted.sort((a, b) => b.id - a.id); 
         }
         setFilteredBooks(sorted);
     };
@@ -111,30 +108,28 @@ const AllBooksPage = () => {
 
     const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
-    const handleEdit = (bookId) => {
-        console.log('Edit book:', bookId);
-        // Add edit logic here
-    };
-
-    const handleDelete = (bookId) => {
-        console.log('Delete book:', bookId);
-        // Add delete logic here
-    };
+    // **** ลบ: handleEdit และ handleDelete ออกจาก AllBooksPage ****
 
     if (loading) {
         return <LoadingSpinner />;
-    } return (
+    } 
+    
+    // หากเกิด Error จะแสดงข้อความ Error
+    if (error) {
+        return <div className="text-center py-12 text-red-600">
+            <h2 className="text-2xl font-bold">เกิดข้อผิดพลาดในการดึงข้อมูล</h2>
+            <p>{error}</p>
+        </div>;
+    }
+
+
+    return (
         <div className="min-h-screen bg-gray-50">
             <div className="container mx-auto px-4 py-8">
-                {/* Page Header */}
+                {/* Page Header - ลบปุ่ม Add Book ออก เพราะไม่ใช่หน้า Manager */}
                 <div className="mb-8 flex items-center justify-between">
                     <h1 className="text-4xl font-bold text-gray-900">หนังสือทั้งหมด</h1>
-                    <button
-                        onClick={handleNavigateAddBook}
-                        className="px-6 py-3 border-2 border-gray-300 rounded-lg font-semibold
-                    text-gray-700 hover:bg-gray-50 transition-colors">
-                        Add Book
-                    </button>
+                    {/* ลบปุ่ม Add Book ออก */}
                 </div>
                 <p className="text-gray-600 mb-8">ค้นพบหนังสือที่คุณชื่นชอบจากคอลเล็กชันของเรา</p>
 
@@ -189,41 +184,19 @@ const AllBooksPage = () => {
 
                 {/* Books Grid */}
                 {currentBooks.length > 0 ? (
+                    // **** แก้ไข: ลบปุ่ม Edit/Delete ที่หุ้ม BookCard ออก ****
                     <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {currentBooks.map(book => (
-                            <div key={book.id} className="relative">
-                                {/* Edit & Delete Buttons */}
-                                <div className="absolute top-2 right-2 z-10 flex gap-2">
-                                    <button
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            handleEdit(book.id);
-                                        }}
-                                        className="p-2 bg-white rounded-full hover:bg-blue-50 transition-colors shadow-md"
-                                        title="แก้ไข"
-                                    >
-                                        <PencilIcon className="h-5 w-5 text-blue-600" />
-                                    </button>
-                                    <button
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            handleDelete(book.id);
-                                        }}
-                                        className="p-2 bg-white rounded-full hover:bg-red-50 transition-colors shadow-md"
-                                        title="ลบ"
-                                    >
-                                        <TrashIcon className="h-5 w-5 text-red-600" />
-                                    </button>
-                                </div>
-                                <BookCard book={book} />
-                            </div>
+                            <BookCard key={book.id} book={book} />
                         ))}
                     </div>
                 ) : (
                     <div className="text-center py-12">
                         <p className="text-gray-500 text-lg">ไม่พบหนังสือที่ค้นหา</p>
                     </div>
-                )}                {/* Pagination */}
+                )}
+                
+                {/* Pagination */}
                 {totalPages > 1 && (
                     <div className="mt-12 flex justify-center">
                         <nav className="flex items-center space-x-2">
@@ -235,33 +208,22 @@ const AllBooksPage = () => {
                                 ก่อนหน้า
                             </button>
 
-                            {[...Array(Math.min(5, totalPages))].map((_, index) => {
-                                let pageNumber = index + 1;
-                                if (totalPages > 5) {
-                                    if (currentPage > 3) {
-                                        pageNumber = currentPage - 2 + index;
-                                    }
-                                    if (currentPage > totalPages - 3) {
-                                        pageNumber = totalPages - 4 + index;
-                                    }
-                                }
-
-                                if (pageNumber > 0 && pageNumber <= totalPages) {
-                                    return (
-                                        <button
-                                            key={pageNumber}
-                                            onClick={() => paginate(pageNumber)}
-                                            className={`px-4 py-2 rounded-lg ${currentPage === pageNumber
-                                                ? 'bg-viridian-600 text-white'
-                                                : 'border border-gray-300 hover:bg-gray-50'
-                                                }`}
-                                        >
-                                            {pageNumber}
-                                        </button>
-                                    );
-                                }
-                                return null;
+                            {[...Array(totalPages)].map((_, index) => {
+                                const pageNumber = index + 1;
+                                return (
+                                    <button
+                                        key={pageNumber}
+                                        onClick={() => paginate(pageNumber)}
+                                        className={`px-4 py-2 rounded-lg ${currentPage === pageNumber
+                                            ? 'bg-viridian-600 text-white'
+                                            : 'border border-gray-300 hover:bg-gray-50'
+                                            }`}
+                                    >
+                                        {pageNumber}
+                                    </button>
+                                );
                             })}
+
 
                             <button
                                 onClick={() => paginate(currentPage + 1)}
